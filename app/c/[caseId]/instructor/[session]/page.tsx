@@ -86,6 +86,7 @@ export default function InstructorPage() {
 
   const updateConfig = async (updates: Partial<SessionConfig>) => {
     if (!config) return;
+    setConfig({ ...config, ...updates });
     await supabase
       .from("session_config")
       .update(updates)

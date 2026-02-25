@@ -8,6 +8,7 @@ interface CaseRow {
   id: string;
   title: string;
   created_at: string;
+  created_by: string;
 }
 
 export default function HomePage() {
@@ -16,23 +17,56 @@ export default function HomePage() {
   const [newTitle, setNewTitle] = useState("");
   const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState<string | null>(null);
+  const [emailInput, setEmailInput] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
-    loadCases();
+    const stored = localStorage.getItem("instructor_email");
+    if (stored) {
+      setEmail(stored);
+    } else {
+      setLoading(false);
+    }
   }, []);
 
-  const loadCases = async () => {
+  useEffect(() => {
+    if (email) {
+      loadCases(email);
+    }
+  }, [email]);
+
+  const loadCases = async (forEmail: string) => {
+    setLoading(true);
     const supabase = createClient();
     const { data } = await supabase
       .from("case_config")
-      .select("id, title, created_at")
+      .select("id, title, created_at, created_by")
+      .eq("created_by", forEmail)
       .order("created_at", { ascending: false });
     setCases(data ?? []);
     setLoading(false);
   };
 
+  const handleEmailSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = emailInput.trim().toLowerCase();
+    if (!trimmed) return;
+    localStorage.setItem("instructor_email", trimmed);
+    setEmail(trimmed);
+  };
+
+  const handleSwitch = () => {
+    localStorage.removeItem("instructor_email");
+    setEmail(null);
+    setEmailInput("");
+    setCases([]);
+    setLoading(false);
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email) return;
     const slug = newId.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
     if (!slug) return;
     setCreating(true);
@@ -41,20 +75,79 @@ export default function HomePage() {
     await supabase.from("case_config").insert({
       id: slug,
       title: newTitle.trim() || "New Case",
+      created_by: email,
     });
 
     setNewId("");
     setNewTitle("");
     setCreating(false);
-    loadCases();
+    loadCases(email);
   };
+
+  const handleDelete = async (caseId: string, caseTitle: string) => {
+    if (!email) return;
+    if (!window.confirm(`Delete case "${caseTitle}"? All responses will be permanently deleted.`)) return;
+    setDeleting(caseId);
+
+    const supabase = createClient();
+    await supabase.from("responses").delete().eq("case_id", caseId);
+    await supabase.from("case_config").delete().eq("id", caseId);
+
+    setDeleting(null);
+    loadCases(email);
+  };
+
+  // Email prompt screen
+  if (!email) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <form
+          onSubmit={handleEmailSubmit}
+          className="bg-white rounded-xl border border-gray-200 p-8 w-full max-w-sm"
+        >
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Case Discussion Board
+          </h1>
+          <p className="text-gray-500 mb-6">
+            Enter your email to get started
+          </p>
+          <input
+            type="email"
+            value={emailInput}
+            onChange={(e) => setEmailInput(e.target.value)}
+            placeholder="you@school.edu"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+            required
+          />
+          <button
+            type="submit"
+            disabled={!emailInput.trim()}
+            className="w-full px-5 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-40 transition-colors"
+          >
+            Continue
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto p-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Case Discussion Board
-        </h1>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Case Discussion Board
+          </h1>
+          <div className="text-sm text-gray-500">
+            {email}{" "}
+            <button
+              onClick={handleSwitch}
+              className="text-blue-600 hover:underline ml-1"
+            >
+              Switch
+            </button>
+          </div>
+        </div>
         <p className="text-gray-500 mb-8">
           Create and manage classroom discussion cases
         </p>
@@ -138,6 +231,14 @@ export default function HomePage() {
                   >
                     Instructor
                   </Link>
+                  <button
+                    onClick={() => handleDelete(c.id, c.title)}
+                    disabled={deleting === c.id}
+                    className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors disabled:opacity-40"
+                    title="Delete case"
+                  >
+                    {deleting === c.id ? "..." : "Delete"}
+                  </button>
                 </div>
               </div>
             ))}

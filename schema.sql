@@ -12,6 +12,7 @@ CREATE TABLE case_config (
   topics JSONB NOT NULL DEFAULT '[]'::jsonb,
   sentiment_positive TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
   sentiment_negative TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  created_by TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

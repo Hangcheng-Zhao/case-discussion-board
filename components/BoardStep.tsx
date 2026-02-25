@@ -24,7 +24,7 @@ export default function BoardStep({ step, responses, isActive, compact }: BoardS
     >
       <div className={compact ? "py-2" : "py-3"}>
         <div className="flex items-baseline justify-between mb-1">
-          <h4 className={`font-semibold text-gray-200 ${compact ? "text-sm" : "text-base"}`}>
+          <h4 className={`font-semibold text-gray-200 ${compact ? "text-base" : "text-xl"}`}>
             {step.question}
           </h4>
           {stepResponses.length > 0 && (

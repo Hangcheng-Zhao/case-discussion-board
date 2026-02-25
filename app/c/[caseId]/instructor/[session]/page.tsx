@@ -50,11 +50,11 @@ export default function InstructorPage() {
           event: "*",
           schema: "public",
           table: "session_config",
-          filter: `case_id=eq.${caseId}`,
+          filter: `session_id=eq.${sessionId}`,
         },
         (payload) => {
           const row = payload.new as SessionConfig;
-          if (row.session_id === sessionId) setConfig(row);
+          if (row.case_id === caseId) setConfig(row);
         }
       )
       .subscribe();
@@ -67,13 +67,10 @@ export default function InstructorPage() {
           event: "INSERT",
           schema: "public",
           table: "responses",
-          filter: `case_id=eq.${caseId}`,
+          filter: `session_id=eq.${sessionId}`,
         },
         (payload) => {
-          const row = payload.new as Response;
-          if (row.session_id === sessionId) {
-            setResponses((prev) => [...prev, row]);
-          }
+          setResponses((prev) => [...prev, payload.new as Response]);
         }
       )
       .subscribe();

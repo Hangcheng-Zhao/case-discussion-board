@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { SessionConfig, Response } from "@/lib/types";
@@ -18,36 +18,26 @@ export default function InstructorPage() {
 
   const [config, setConfig] = useState<SessionConfig | null>(null);
   const [responses, setResponses] = useState<Response[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const supabaseRef = useRef(createClient());
+
+  const supabase = createClient();
 
   if (validIds.length > 0 && !validIds.includes(sessionId)) {
     notFound();
   }
 
   useEffect(() => {
-    const supabase = supabaseRef.current;
-
     const fetchAll = async () => {
-      try {
-        const [configRes, responsesRes] = await Promise.all([
-          supabase.from("session_config").select("*").eq("case_id", caseId).eq("session_id", sessionId).single(),
-          supabase
-            .from("responses")
-            .select("*")
-            .eq("case_id", caseId)
-            .eq("session_id", sessionId)
-            .order("created_at", { ascending: true }),
-        ]);
-        if (configRes.error) {
-          setError(`Config error: ${configRes.error.message}`);
-          return;
-        }
-        if (configRes.data) setConfig(configRes.data);
-        if (responsesRes.data) setResponses(responsesRes.data);
-      } catch (e) {
-        setError(`Fetch error: ${String(e)}`);
-      }
+      const [configRes, responsesRes] = await Promise.all([
+        supabase.from("session_config").select("*").eq("case_id", caseId).eq("session_id", sessionId).single(),
+        supabase
+          .from("responses")
+          .select("*")
+          .eq("case_id", caseId)
+          .eq("session_id", sessionId)
+          .order("created_at", { ascending: true }),
+      ]);
+      if (configRes.data) setConfig(configRes.data);
+      if (responsesRes.data) setResponses(responsesRes.data);
     };
 
     fetchAll();
@@ -96,7 +86,7 @@ export default function InstructorPage() {
 
   const updateConfig = async (updates: Partial<SessionConfig>) => {
     if (!config) return;
-    await supabaseRef.current
+    await supabase
       .from("session_config")
       .update(updates)
       .eq("case_id", caseId)
@@ -127,7 +117,7 @@ export default function InstructorPage() {
 
   const handleReset = async () => {
     if (!confirm("Reset this session? This will delete all responses for this section.")) return;
-    await supabaseRef.current
+    await supabase
       .from("responses")
       .delete()
       .eq("case_id", caseId)
@@ -139,17 +129,6 @@ export default function InstructorPage() {
     });
     setResponses([]);
   };
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 max-w-md">
-          <h2 className="text-red-800 font-bold mb-2">Connection Error</h2>
-          <p className="text-red-600 text-sm">{error}</p>
-        </div>
-      </div>
-    );
-  }
 
   if (!config) {
     return (

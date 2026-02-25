@@ -54,11 +54,11 @@ export default function StudentPage() {
           event: "*",
           schema: "public",
           table: "session_config",
-          filter: `case_id=eq.${caseId}`,
+          filter: `session_id=eq.${sessionId}`,
         },
         (payload) => {
           const row = payload.new as SessionConfig;
-          if (row.session_id === sessionId) setConfig(row);
+          if (row.case_id === caseId) setConfig(row);
         }
       )
       .subscribe();

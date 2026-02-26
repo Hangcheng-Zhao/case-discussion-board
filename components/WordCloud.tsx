@@ -92,22 +92,40 @@ export default function WordCloud({ responses, showSentiment, positiveKeywords, 
       const raw = r.answer || r.poll_choice || "";
       if (!raw.trim()) continue;
 
-      // For sentiment questions, split by commas / "and" into individual words
-      const phrases = showSentiment
-        ? raw.split(/[,\/]|\band\b/i).map((s) => s.trim()).filter(Boolean)
-        : [raw.trim()];
+      // For sentiment questions, split short comma-separated lists into individual words
+      // but keep full sentences intact
+      let phrases: string[];
+      if (showSentiment) {
+        // First try splitting by commas
+        const parts = raw.split(/[,\/]/).map((s) => s.trim()).filter(Boolean);
+        // Only split by "and" if each piece is short (≤4 words) — avoids breaking sentences
+        const refined: string[] = [];
+        for (const part of parts) {
+          const wordCount = part.split(/\s+/).length;
+          if (wordCount <= 6) {
+            // Short phrase — safe to split on "and"
+            refined.push(...part.split(/\band\b/i).map((s) => s.trim()).filter(Boolean));
+          } else {
+            refined.push(part);
+          }
+        }
+        phrases = refined;
+      } else {
+        phrases = [raw.trim()];
+      }
 
       for (const phrase of phrases) {
-        const key = phrase.toLowerCase();
-        if (!key) continue;
+        // Strip trailing/leading punctuation for cleaner matching
+        const cleaned = phrase.replace(/^[.\s!?;:]+|[.\s!?;:]+$/g, "").trim();
+        if (!cleaned) continue;
+        const key = cleaned.toLowerCase();
 
         // Re-classify each individual phrase
         let sentiment = r.sentiment;
         if (showSentiment && positiveKeywords && negativeKeywords) {
-          const lower = key;
           let pos = 0, neg = 0;
-          for (const kw of positiveKeywords) { if (lower.includes(kw)) pos++; }
-          for (const kw of negativeKeywords) { if (lower.includes(kw)) neg++; }
+          for (const kw of positiveKeywords) { if (key.includes(kw)) pos++; }
+          for (const kw of negativeKeywords) { if (key.includes(kw)) neg++; }
           sentiment = pos > neg ? "positive" : neg > pos ? "negative" : "neutral";
         }
 
@@ -119,7 +137,7 @@ export default function WordCloud({ responses, showSentiment, positiveKeywords, 
           }
         } else {
           grouped.set(key, {
-            text: phrase,
+            text: cleaned,
             count: 1,
             studentNames: [r.student_name],
             sentiment,

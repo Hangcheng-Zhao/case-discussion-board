@@ -12,7 +12,7 @@ export default function BoardPage() {
   const params = useParams();
   const caseId = params.caseId as string;
   const sessionId = (params.session as string).toUpperCase();
-  const { board_title, sessions, steps, topics } = useCaseConfig();
+  const { board_title, sessions, steps, topics, sentiment_positive, sentiment_negative } = useCaseConfig();
 
   const validIds = sessions.map((s) => s.id);
   const sessionLabel = sessions.find((s) => s.id === sessionId)?.label ?? sessionId;
@@ -210,6 +210,8 @@ export default function BoardPage() {
                           responses={responses}
                           isActive={config ? step.id === config.current_step : false}
                           compact={!isFocused}
+                          positiveKeywords={sentiment_positive}
+                          negativeKeywords={sentiment_negative}
                         />
                       );
                     })}

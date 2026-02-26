@@ -9,9 +9,11 @@ interface BoardStepProps {
   responses: Response[];
   isActive: boolean;
   compact?: boolean;
+  positiveKeywords?: string[];
+  negativeKeywords?: string[];
 }
 
-export default function BoardStep({ step, responses, isActive, compact }: BoardStepProps) {
+export default function BoardStep({ step, responses, isActive, compact, positiveKeywords, negativeKeywords }: BoardStepProps) {
   const stepResponses = responses.filter((r) => r.step === step.id);
 
   return (
@@ -40,6 +42,8 @@ export default function BoardStep({ step, responses, isActive, compact }: BoardS
           <WordCloud
             responses={stepResponses}
             showSentiment={step.type === "sentiment"}
+            positiveKeywords={positiveKeywords}
+            negativeKeywords={negativeKeywords}
           />
         )}
       </div>

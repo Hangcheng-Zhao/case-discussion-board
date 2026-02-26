@@ -6,6 +6,8 @@ import { useMemo } from "react";
 interface WordCloudProps {
   responses: Response[];
   showSentiment?: boolean;
+  positiveKeywords?: string[];
+  negativeKeywords?: string[];
 }
 
 function hashString(str: string): number {
@@ -76,7 +78,7 @@ function WordBubble({ word }: { word: WordItem }) {
   );
 }
 
-export default function WordCloud({ responses, showSentiment }: WordCloudProps) {
+export default function WordCloud({ responses, showSentiment, positiveKeywords, negativeKeywords }: WordCloudProps) {
   const words = useMemo(() => {
     // Aggregate duplicates (case-insensitive)
     const grouped = new Map<string, {
@@ -88,20 +90,41 @@ export default function WordCloud({ responses, showSentiment }: WordCloudProps) 
 
     for (const r of responses) {
       const raw = r.answer || r.poll_choice || "";
-      const key = raw.trim().toLowerCase();
-      if (!key) continue;
+      if (!raw.trim()) continue;
 
-      const existing = grouped.get(key);
-      if (existing) {
-        existing.count++;
-        existing.studentNames.push(r.student_name);
-      } else {
-        grouped.set(key, {
-          text: raw.trim(),
-          count: 1,
-          studentNames: [r.student_name],
-          sentiment: r.sentiment,
-        });
+      // For sentiment questions, split by commas / "and" into individual words
+      const phrases = showSentiment
+        ? raw.split(/[,\/]|\band\b/i).map((s) => s.trim()).filter(Boolean)
+        : [raw.trim()];
+
+      for (const phrase of phrases) {
+        const key = phrase.toLowerCase();
+        if (!key) continue;
+
+        // Re-classify each individual phrase
+        let sentiment = r.sentiment;
+        if (showSentiment && positiveKeywords && negativeKeywords) {
+          const lower = key;
+          let pos = 0, neg = 0;
+          for (const kw of positiveKeywords) { if (lower.includes(kw)) pos++; }
+          for (const kw of negativeKeywords) { if (lower.includes(kw)) neg++; }
+          sentiment = pos > neg ? "positive" : neg > pos ? "negative" : "neutral";
+        }
+
+        const existing = grouped.get(key);
+        if (existing) {
+          existing.count++;
+          if (!existing.studentNames.includes(r.student_name)) {
+            existing.studentNames.push(r.student_name);
+          }
+        } else {
+          grouped.set(key, {
+            text: phrase,
+            count: 1,
+            studentNames: [r.student_name],
+            sentiment,
+          });
+        }
       }
     }
 
